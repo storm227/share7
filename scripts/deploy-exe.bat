@@ -29,6 +29,8 @@ set ERRORS=0
 call :upload "%ZIP%" Share7.zip
 call :upload "%EXE%" Share7.exe
 
+del "%ZIP%"
+
 echo.
 if %ERRORS% NEQ 0 (
   echo DEPLOY FAILED

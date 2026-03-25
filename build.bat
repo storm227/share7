@@ -13,7 +13,7 @@ pushd "%~dp0source"
 
 rem Compile icon resource
 echo Compiling icon resource...
-rc Share7.Icon.rc
+"C:\Program Files (x86)\Embarcadero\Studio\37.0\bin\brcc32.exe" Share7.Icon.rc
 if %ERRORLEVEL% NEQ 0 (
   echo WARNING: Icon resource compilation failed, using existing .res
 )

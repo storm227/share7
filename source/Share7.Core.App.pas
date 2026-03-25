@@ -86,12 +86,12 @@ end;
 
 procedure TShare7App.PrintBanner;
 begin
-  ConsoleWrite('Share7 v' + SHARE7_VERSION + ' - freeware, (c)2026 michal@glebowski.pl', ccWhite);
+  ConsoleWrite('Share7 v' + SHARE7_VERSION + ' (c)2026 michal@glebowski.pl', ccWhite);
   ConsoleWrite('Peer-to-peer file sync for local networks (same subnet).', ccDarkGray);
   ConsoleWrite('Run share7.exe in a folder on each computer - files sync automatically.', ccDarkGray);
   //ConsoleWrite('Use --folder <path> to sync a different folder than the current one.', ccDarkGray);
   //ConsoleWrite('All computers must be on the same network subnet (no NAT/VPN).', ccDarkGray);
-  ConsoleWrite('Uses Synopse mORMot 2 framework - https://synopse.info (MPL 1.1)', ccDarkGray);
+
   ConsoleWrite('', ccLightGray);
   ConsoleWrite('Terminal: ' + FConfig.Name, ccLightGreen);
   ConsoleWrite(RawUtf8('Folder:   ' + FConfig.Folder), ccLightGray);

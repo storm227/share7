@@ -429,4 +429,9 @@ footer p {
   .container {
     padding: 0 20px;
   }
+
+  .btn-secondary {
+    margin-left: 0;
+    margin-top: 12px;
+  }
 }
