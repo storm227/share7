@@ -5,7 +5,9 @@ interface
 uses
   mormot.core.base,
   mormot.core.os,
+  mormot.core.text,
   Share7.Core.Types,
+  Share7.Core.Captions,
   Share7.Fs.Watcher;
 
 type
@@ -65,8 +67,7 @@ begin
       Bar[J] := '#'
     else
       Bar[J] := '.';
-  var Line := RawUtf8('  <- ' + string(ARelPath) + ' [' + string(Bar) + '] ' +
-    IntToStr(Pct) + '%');
+  var Line := FormatUtf8(SCaptionFileProgress, [ARelPath, Bar, Pct, '%']);
   // Pad with spaces to overwrite previous longer line
   while Length(Line) < 78 do
     Line := Line + ' ';
@@ -166,9 +167,8 @@ begin
             DateTimeToUnixTime(RemoteEntries[I].ModifiedUtc));
 
           Inc(Result.Received);
-          ConsoleWrite(RawUtf8('  <- ' +
-            string(RelPath) + ' (' +
-            string(FormatFileSize(RemoteEntries[I].Size)) + ')'), ccLightCyan);
+          ConsoleWrite(FormatUtf8(SCaptionFileReceived,
+            [RelPath, FormatFileSize(RemoteEntries[I].Size)]), ccLightCyan);
 
           EntriesLock^.Lock;
           try
@@ -212,7 +212,7 @@ begin
       Watcher.SuppressPath(ARelPath);
     try
       DeleteFile(FullPath);
-      ConsoleWrite(RawUtf8('  [deleted] ' + string(ARelPath)), ccLightRed);
+      ConsoleWrite(FormatUtf8(SCaptionFileRemoteDeleted, [ARelPath]), ccLightRed);
 
       EntriesLock^.Lock;
       try

@@ -5,8 +5,10 @@ interface
 uses
   mormot.core.base,
   mormot.core.os,
+  mormot.core.text,
   Share7.Core.Types,
   Share7.Core.Config,
+  Share7.Core.Captions,
   Share7.Net.Discovery,
   Share7.Net.Transfer,
   Share7.Fs.Scanner,
@@ -93,10 +95,10 @@ begin
   //ConsoleWrite('All computers must be on the same network subnet (no NAT/VPN).', ccDarkGray);
 
   ConsoleWrite('', ccLightGray);
-  ConsoleWrite('Terminal: ' + FConfig.Name, ccLightGreen);
-  ConsoleWrite(RawUtf8('Folder:   ' + FConfig.Folder), ccLightGray);
-  ConsoleWrite(RawUtf8('Listening on UDP :' + IntToStr(FConfig.UdpPort) +
-    ', TCP :' + IntToStr(FConfig.TcpPort)), ccLightGray);
+  ConsoleWrite(FormatUtf8(SCaptionTerminal, [FConfig.Name]), ccLightGreen);
+  ConsoleWrite(FormatUtf8(SCaptionFolder, [RawUtf8(FConfig.Folder)]), ccLightGray);
+  ConsoleWrite(FormatUtf8(SCaptionListening,
+    [FConfig.UdpPort, FConfig.TcpPort]), ccLightGray);
   ConsoleWrite('', ccLightGray);
 end;
 
@@ -106,15 +108,14 @@ begin
   var Drift := Round(Abs(APeer.UtcTime - NowUtc) * SecsPerDay);
   if Drift > CLOCK_MAX_DRIFT_SEC then
   begin
-    ConsoleWrite(RawUtf8('[' + string(TimeStampStr) +
-      '] DENIED sync with ' + string(APeer.Name) +
-      ' - clock drift ' + IntToStr(Drift) + 's exceeds ' +
-      IntToStr(CLOCK_MAX_DRIFT_SEC) + 's limit'), ccLightRed);
+    ConsoleWrite(FormatUtf8('[%] ' + SCaptionDenied,
+      [TimeStampStr, APeer.Name, IntToStr(Drift) + 's',
+      IntToStr(CLOCK_MAX_DRIFT_SEC) + 's']), ccLightRed);
     Exit;
   end;
 
-  ConsoleWrite(RawUtf8('[' + string(TimeStampStr) + '] Peer discovered: ' +
-    string(APeer.Name) + ' (' + string(APeer.IP) + ')'), ccLightGreen);
+  ConsoleWrite(FormatUtf8('[%] ' + SCaptionPeerDiscovered,
+    [TimeStampStr, APeer.Name, APeer.IP]), ccLightGreen);
 
   if FConfig.Sound then
     MessageBeep(MB_OK);
@@ -131,8 +132,8 @@ end;
 
 procedure TShare7App.OnPeerLost(const APeer: TPeerInfo);
 begin
-  ConsoleWrite(RawUtf8('[' + string(TimeStampStr) + '] Peer gone: ' +
-    string(APeer.Name)), ccLightRed);
+  ConsoleWrite(FormatUtf8('[%] ' + SCaptionPeerGone,
+    [TimeStampStr, APeer.Name]), ccLightRed);
 
   if FConfig.Sound then
     MessageBeep(MB_ICONHAND);
@@ -140,17 +141,17 @@ end;
 
 procedure TShare7App.DoSyncWithPeer(const APeer: TPeerInfo);
 begin
-  ConsoleWrite(RawUtf8('[' + string(TimeStampStr) + '] Syncing with ' +
-    string(APeer.Name) + '...'), ccLightGray);
+  ConsoleWrite(FormatUtf8('[%] ' + SCaptionSyncing,
+    [TimeStampStr, APeer.Name]), ccLightGray);
 
   var Stats := FSyncEngine.SyncWithPeer(APeer.IP, APeer.TcpPort, APeer.Name);
 
   if (Stats.Received > 0) or (Stats.Sent > 0) then
-    ConsoleWrite(RawUtf8('[' + string(TimeStampStr) + '] Sync complete: ' +
-      IntToStr(Stats.Received) + ' received, ' +
-      IntToStr(Stats.Sent) + ' sent'), ccLightGray)
+    ConsoleWrite(FormatUtf8('[%] ' + SCaptionSyncComplete,
+      [TimeStampStr, Stats.Received, Stats.Sent]), ccLightGray)
   else
-    ConsoleWrite(RawUtf8('[' + string(TimeStampStr) + '] Sync complete: up to date'), ccDarkGray);
+    ConsoleWrite(FormatUtf8('[%] ' + SCaptionSyncUpToDate,
+      [TimeStampStr]), ccDarkGray);
 end;
 
 procedure TShare7App.OnFileChange(AAction: TFileAction; const ARelPath: RawUtf8);
@@ -166,8 +167,8 @@ begin
           Exit;
         FLastNotifyTick := Tick;
 
-        ConsoleWrite(RawUtf8('[' + string(TimeStampStr) + '] File changed: ' +
-          string(ARelPath)), ccYellow);
+        ConsoleWrite(FormatUtf8('[%] ' + SCaptionFileChanged,
+          [TimeStampStr, ARelPath]), ccYellow);
         // Rescan to update manifest
         RescanAndUpdateManifest;
         // Notify peers to pull
@@ -175,8 +176,8 @@ begin
       end;
     TFileAction.faDeleted:
       begin
-        ConsoleWrite(RawUtf8('[' + string(TimeStampStr) + '] File deleted: ' +
-          string(ARelPath)), ccLightRed);
+        ConsoleWrite(FormatUtf8('[%] ' + SCaptionFileDeleted,
+          [TimeStampStr, ARelPath]), ccLightRed);
         // Remove from manifest
         FEntriesLock.Lock;
         try
@@ -239,8 +240,8 @@ begin
     Exit;
   FLastPeerCount := Count;
   if Count = 0 then
-    ConsoleWrite(RawUtf8('[' + string(TimeStampStr) +
-      '] No peers online - waiting for terminals...'), ccDarkGray)
+    ConsoleWrite(FormatUtf8('[%] ' + SCaptionNoPeers,
+      [TimeStampStr]), ccDarkGray)
   else
   begin
     var Peers := FDiscovery.GetPeerList;
@@ -251,8 +252,8 @@ begin
         Names := Names + ', ';
       Names := Names + string(Peers[I].Name);
     end;
-    ConsoleWrite(RawUtf8('[' + string(TimeStampStr) + '] ' +
-      IntToStr(Count) + ' peer(s) online: ' + Names), ccLightGreen);
+    ConsoleWrite(FormatUtf8('[%] ' + SCaptionPeersOnline,
+      [TimeStampStr, Count, RawUtf8(Names)]), ccLightGreen);
   end;
 end;
 
@@ -264,10 +265,11 @@ begin
   PrintBanner;
 
   // Initial scan
-  ConsoleWrite(RawUtf8('[' + string(TimeStampStr) + '] Scanning folder...'), ccDarkGray);
+  ConsoleWrite(FormatUtf8('[%] ' + SCaptionScanning,
+    [TimeStampStr]), ccDarkGray);
   ScanDirectory(FConfig.Folder, FEntries);
-  ConsoleWrite(RawUtf8('[' + string(TimeStampStr) + '] Found ' +
-    IntToStr(Length(FEntries)) + ' files'), ccDarkGray);
+  ConsoleWrite(FormatUtf8('[%] ' + SCaptionFoundFiles,
+    [TimeStampStr, Length(FEntries)]), ccDarkGray);
 
   // Start TCP server
   FTcpServer := TTcpServerThread.Create(FConfig.TcpPort, FConfig.Folder,
@@ -288,7 +290,8 @@ begin
   // Install Ctrl+C handler
   SetConsoleCtrlHandler(@ConsoleCtrlHandler, True);
 
-  ConsoleWrite(RawUtf8('[' + string(TimeStampStr) + '] Ready. Press Ctrl+C to stop.'), ccLightGray);
+  ConsoleWrite(FormatUtf8('[%] ' + SCaptionReady,
+    [TimeStampStr]), ccLightGray);
   ConsoleWrite('', ccLightGray);
 
   // Main loop - check peer status every 5s
@@ -305,7 +308,8 @@ begin
 
   // Cleanup
   ConsoleWrite('', ccLightGray);
-  ConsoleWrite(RawUtf8('[' + string(TimeStampStr) + '] Shutting down...'), ccYellow);
+  ConsoleWrite(FormatUtf8('[%] ' + SCaptionShuttingDown,
+    [TimeStampStr]), ccYellow);
 end;
 
 procedure TShare7App.Stop;

@@ -15,9 +15,11 @@ program Share7;
 {$R Share7.Icon.res}
 
 uses
+  Winapi.Windows,
   System.SysUtils,
   mormot.core.base,
   mormot.core.os,
+  mormot.core.text,
   Share7.Core.Types in 'Share7.Core.Types.pas',
   Share7.Core.Config in 'Share7.Core.Config.pas',
   Share7.Core.App in 'Share7.Core.App.pas',
@@ -26,9 +28,11 @@ uses
   Share7.Net.Protocol in 'Share7.Net.Protocol.pas',
   Share7.Net.Discovery in 'Share7.Net.Discovery.pas',
   Share7.Net.Transfer in 'Share7.Net.Transfer.pas',
-  Share7.Sync.Engine in 'Share7.Sync.Engine.pas';
+  Share7.Sync.Engine in 'Share7.Sync.Engine.pas',
+  Share7.Core.Captions in 'Share7.Core.Captions.pas';
 
 begin
+  SetConsoleOutputCP(CP_UTF8);
   try
     var App := TShare7App.Create;
     try
@@ -39,7 +43,7 @@ begin
   except
     on E: Exception do
     begin
-      ConsoleWrite(RawUtf8('FATAL: ' + E.Message), ccLightRed);
+      ConsoleWrite(FormatUtf8(SCaptionFatal, [RawUtf8(E.Message)]), ccLightRed);
       ExitCode := 1;
     end;
   end;
