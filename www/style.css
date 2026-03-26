@@ -111,7 +111,7 @@ code {
 /* ── Hero ────────────────────────────────────────────── */
 
 #hero {
-  padding: 160px 0 100px;
+  padding: 40px 0 10px;
   text-align: center;
 }
 
@@ -176,7 +176,7 @@ code {
 /* ── Sections common ─────────────────────────────────── */
 
 section {
-  padding: 96px 0;
+  padding: 40px 0;
 }
 
 section:nth-child(odd) {
@@ -409,11 +409,11 @@ footer p {
   }
 
   section {
-    padding: 64px 0;
+    padding: 36px 0;
   }
 
   #hero {
-    padding: 120px 0 72px;
+    padding: 100px 0 48px;
   }
 }
 
