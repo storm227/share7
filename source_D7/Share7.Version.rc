@@ -1,0 +1,28 @@
+1 VERSIONINFO
+FILEVERSION 1,0,0,0
+PRODUCTVERSION 1,0,0,0
+FILEFLAGSMASK 0x3f
+FILEFLAGS 0x0
+FILEOS 0x40004
+FILETYPE 0x1
+FILESUBTYPE 0x0
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904E4"
+    BEGIN
+      VALUE "CompanyName", "polestorm.pl\0"
+      VALUE "FileDescription", "Share7 - P2P File Sync\0"
+      VALUE "FileVersion", "1.0.0.0\0"
+      VALUE "InternalName", "Share7\0"
+      VALUE "LegalCopyright", "(c) 2026 michal@glebowski.pl\0"
+      VALUE "OriginalFilename", "Share7.exe\0"
+      VALUE "ProductName", "Share7\0"
+      VALUE "ProductVersion", "1.0.0.0\0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0409, 1252
+  END
+END

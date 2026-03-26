@@ -8,9 +8,6 @@ program Share7;
   {$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
 {$IFEND}
 
-// Strip relocation table from EXE (not needed for .exe, only .dll)
-{$SetPEFlags 1} // IMAGE_FILE_RELOCS_STRIPPED
-
 // Application icon
 {$R Share7.Icon.res}
 
@@ -33,6 +30,21 @@ uses
 
 begin
   SetConsoleOutputCP(CP_UTF8);
+
+  // Prevent multiple instances in the same folder
+  var MutexName := 'Share7_' + StringReplace(
+    StringReplace(UpperCase(ExtractFilePath(ParamStr(0))),
+      '\', '_', [rfReplaceAll]),
+      ':', '', [rfReplaceAll]);
+  var Mutex := CreateMutex(nil, False, PChar(MutexName));
+  if GetLastError = ERROR_ALREADY_EXISTS then
+  begin
+    ConsoleWrite('Share7 is already running in this folder.', ccLightRed);
+    ExitCode := 1;
+    CloseHandle(Mutex);
+    Exit;
+  end;
+
   try
     var App := TShare7App.Create;
     try
@@ -47,4 +59,5 @@ begin
       ExitCode := 1;
     end;
   end;
+  CloseHandle(Mutex);
 end.
