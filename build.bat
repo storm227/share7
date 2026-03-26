@@ -1,8 +1,8 @@
 @echo off
 echo === Share7 Build ===
 
-set MODE=debug
-if /i "%1"=="release" set MODE=release
+set MODE=release
+if /i "%1"=="debug" set MODE=debug
 echo Mode: %MODE%
 echo.
 
