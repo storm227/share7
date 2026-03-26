@@ -11,7 +11,7 @@
 ![Windows 7+](https://img.shields.io/badge/Windows_7%2B-0078D4?logo=windows&logoColor=white)
 ![Delphi](https://img.shields.io/badge/Object%20Pascal-Delphi-EE1F35?logo=delphi&logoColor=white)
 ![Free](https://img.shields.io/badge/free-forever-2d6cdf)
-![Size](https://img.shields.io/badge/size-~1%20MB-555)
+![Size](https://img.shields.io/badge/size-~300%20KB-555)
 
 [**Download**](http://polestorm.pl/share7/)
 
@@ -21,7 +21,7 @@
 
 ## What is Share7?
 
-Share7 is a tiny Windows console application that syncs files between computers on the same WiFi network — with **zero configuration**. No server, no account, no port forwarding required. Copy `share7.exe` into any folder, run it on two or more machines, and they stay in sync automatically.
+Share7 is a tiny Windows console application that syncs files between computers on the same WiFi network — with **zero configuration**. No server, no account, no port forwarding required. Copy `Share7.exe` into any folder, run it on two or more machines, and they stay in sync automatically.
 
 ## Features
 
@@ -37,7 +37,7 @@ Share7 is a tiny Windows console application that syncs files between computers 
 ## Usage
 
 ```
-share7.exe [options]
+Share7.exe [options]
 
   -name:<id>      Terminal name — ASCII letters, digits, hyphens, underscores
                   Default: auto-generated two-word name (e.g. fast-zebra)
@@ -52,7 +52,7 @@ On first run, Share7 picks a friendly two-word name like `curious-hedgehog` or `
 ## How It Works
 
 ```
-1. Drop share7.exe into the folder you want to sync and run it
+1. Drop Share7.exe into the folder you want to sync and run it
 2. It broadcasts its presence on UDP port 7731 every 5 seconds
 3. Other Share7 instances on the same network respond immediately
 4. File lists are exchanged over TCP port 7732
@@ -119,6 +119,7 @@ The repository contains two source variants. Both implement identical sync logic
 | **Records** | Methods on records (`Engine.SyncWithPeer`) | Standalone procedures (`SyncWithPeer(Engine, ...)`) |
 | **Arrays** | `Arr := Arr + [item]`, `Delete(Arr, I, 1)` | Manual `SetLength` + shift loops |
 | **Strings** | TStringHelper (`.ToLower`, `.Replace`) | Classic functions (`StringReplace`, `Trim`) |
+| **Unicode filenames** | Full support (UnicodeString + `W` APIs) | Limited to current Windows ANSI codepage |
 
 Both versions require [mORMot2](https://github.com/synopse/mORMot2) checked out alongside this repo.
 
