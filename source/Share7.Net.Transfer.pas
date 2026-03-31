@@ -14,6 +14,8 @@ type
   TOnDeleteNotify = procedure(const ARelPath: RawUtf8) of object;
   TOnChangesNotify = procedure(const APeerIP: RawUtf8; ATcpPort: Word) of object;
   TOnClipboardNotify = procedure(const AText: RawUtf8) of object;
+  TOnScreenFrameNotify = procedure(const APeerName: RawUtf8;
+    const AData: TBytes) of object;
   /// Progress callback: received bytes, total bytes.
   TTransferProgress = reference to procedure(AReceived, ATotal: Int64);
 
@@ -28,11 +30,13 @@ type
     FOnDeleteNotify: TOnDeleteNotify;
     FOnChangesNotify: TOnChangesNotify;
     FOnClipboardNotify: TOnClipboardNotify;
+    FOnScreenFrame: TOnScreenFrameNotify;
     procedure HandleClient(AClient: TCrtSocket);
     procedure HandleRequestFileList(AClient: TCrtSocket);
     procedure HandleRequestFile(AClient: TCrtSocket);
     procedure HandleNotifyDelete(AClient: TCrtSocket);
     procedure HandleNotifyClipboard(AClient: TCrtSocket);
+    procedure HandleScreenFrame(AClient: TCrtSocket);
   protected
     procedure Execute; override;
   public
@@ -42,6 +46,7 @@ type
     property OnDeleteNotify: TOnDeleteNotify read FOnDeleteNotify write FOnDeleteNotify;
     property OnChangesNotify: TOnChangesNotify read FOnChangesNotify write FOnChangesNotify;
     property OnClipboardNotify: TOnClipboardNotify read FOnClipboardNotify write FOnClipboardNotify;
+    property OnScreenFrame: TOnScreenFrameNotify read FOnScreenFrame write FOnScreenFrame;
   end;
 
   /// Client-side TCP operations for syncing with a peer.
@@ -55,6 +60,8 @@ type
     class procedure SendChangesNotify(const AIP: RawUtf8; APort: Word); static;
     class procedure SendClipboardNotify(const AIP: RawUtf8; APort: Word;
       const AText: RawUtf8); static;
+    class procedure SendScreenFrame(const AIP: RawUtf8; APort: Word;
+      const APeerName: RawUtf8; const AData: TBytes); static;
   end;
 
 implementation
@@ -156,6 +163,7 @@ begin
           FOnChangesNotify(AClient.RemoteIP, 0);
       end;
     TCP_NOTIFY_CLIPBOARD: HandleNotifyClipboard(AClient);
+    TCP_SCREEN_FRAME:     HandleScreenFrame(AClient);
   end;
 end;
 
@@ -410,6 +418,65 @@ begin
 
   if Assigned(FOnClipboardNotify) then
     FOnClipboardNotify(RawUtf8(Data));
+end;
+
+procedure TTcpServerThread.HandleScreenFrame(AClient: TCrtSocket);
+begin
+  if not Assigned(FOnScreenFrame) then
+    Exit;
+
+  // Read peer name
+  var NameLen: Word;
+  if not RecvExact(AClient, @NameLen, SizeOf(NameLen)) then
+    Exit;
+  if NameLen > 256 then
+    Exit;
+
+  var NameBuf: RawByteString;
+  SetLength(NameBuf, NameLen);
+  if not RecvExact(AClient, @NameBuf[1], NameLen) then
+    Exit;
+  var PeerName := RawUtf8(NameBuf);
+
+  // Read frame data
+  var DataLen: Cardinal;
+  if not RecvExact(AClient, @DataLen, SizeOf(DataLen)) then
+    Exit;
+  if DataLen = 0 then
+    Exit;
+  if DataLen > 50 * 1024 * 1024 then // 50 MB sanity limit
+    Exit;
+
+  var Data: TBytes;
+  SetLength(Data, DataLen);
+  if not RecvExact(AClient, @Data[0], DataLen) then
+    Exit;
+
+  FOnScreenFrame(PeerName, Data);
+end;
+
+class procedure TTransferClient.SendScreenFrame(const AIP: RawUtf8; APort: Word;
+  const APeerName: RawUtf8; const AData: TBytes);
+begin
+  var Sock := ConnectToPeer(AIP, APort);
+  if Sock = nil then
+    Exit;
+  try
+    var Cmd: Byte := TCP_SCREEN_FRAME;
+    SendRaw(Sock, @Cmd, 1);
+
+    var NameLen: Word := Length(APeerName);
+    SendRaw(Sock, @NameLen, SizeOf(NameLen));
+    if NameLen > 0 then
+      SendRaw(Sock, @APeerName[1], NameLen);
+
+    var DataLen: Cardinal := Length(AData);
+    SendRaw(Sock, @DataLen, SizeOf(DataLen));
+    if DataLen > 0 then
+      SendRaw(Sock, @AData[0], DataLen);
+  finally
+    Sock.Free;
+  end;
 end;
 
 end.
