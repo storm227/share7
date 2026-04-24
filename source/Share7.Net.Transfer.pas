@@ -31,12 +31,13 @@ type
     FOnChangesNotify: TOnChangesNotify;
     FOnClipboardNotify: TOnClipboardNotify;
     FOnScreenFrame: TOnScreenFrameNotify;
-    procedure HandleClient(AClient: TCrtSocket);
+    procedure HandleClientWithCmd(AClient: TCrtSocket; ACmd: Byte);
     procedure HandleRequestFileList(AClient: TCrtSocket);
     procedure HandleRequestFile(AClient: TCrtSocket);
     procedure HandleNotifyDelete(AClient: TCrtSocket);
     procedure HandleNotifyClipboard(AClient: TCrtSocket);
-    procedure HandleScreenFrame(AClient: TCrtSocket);
+    procedure HandleScreenFrame(AClient: TCrtSocket;
+      ACallback: TOnScreenFrameNotify);
   protected
     procedure Execute; override;
   public
@@ -60,8 +61,8 @@ type
     class procedure SendChangesNotify(const AIP: RawUtf8; APort: Word); static;
     class procedure SendClipboardNotify(const AIP: RawUtf8; APort: Word;
       const AText: RawUtf8); static;
-    class procedure SendScreenFrame(const AIP: RawUtf8; APort: Word;
-      const APeerName: RawUtf8; const AData: TBytes); static;
+    class function SendScreenFrame(const AIP: RawUtf8; APort: Word;
+      const APeerName: RawUtf8; const AData: TBytes): Boolean; static;
   end;
 
 implementation
@@ -112,7 +113,7 @@ begin
   FRootDir := ARootDir;
   FEntries := AEntries;
   FEntriesLock := AEntriesLock;
-  inherited Create(False);
+  inherited Create(True);
 end;
 
 procedure TTcpServerThread.Execute;
@@ -131,12 +132,39 @@ begin
       if FServerSock.Sock.Accept(ClientSock, ClientAddr, False) = nrOk then
       begin
         var Client := TCrtSocket.Create(IO_TIMEOUT);
-        try
-          Client.AcceptRequest(ClientSock, @ClientAddr);
-          Client.CreateSockIn;
-          HandleClient(Client);
-        finally
+        Client.AcceptRequest(ClientSock, @ClientAddr);
+        Client.CreateSockIn;
+
+        var Cmd: Byte;
+        if not RecvExact(Client, @Cmd, 1) then
+        begin
           Client.Free;
+          Continue;
+        end;
+
+        // Screen frames handled in separate thread to avoid blocking file ops
+        if Cmd = TCP_SCREEN_FRAME then
+        begin
+          var FrameClient := Client;
+          var Callback := FOnScreenFrame;
+          TThread.CreateAnonymousThread(
+            procedure
+            begin
+              try
+                HandleScreenFrame(FrameClient, Callback);
+              finally
+                FrameClient.Free;
+              end;
+            end
+          ).Start;
+        end
+        else
+        begin
+          try
+            HandleClientWithCmd(Client, Cmd);
+          finally
+            Client.Free;
+          end;
         end;
       end
       else
@@ -147,13 +175,9 @@ begin
   end;
 end;
 
-procedure TTcpServerThread.HandleClient(AClient: TCrtSocket);
+procedure TTcpServerThread.HandleClientWithCmd(AClient: TCrtSocket; ACmd: Byte);
 begin
-  var Cmd: Byte;
-  if not RecvExact(AClient, @Cmd, 1) then
-    Exit;
-
-  case Cmd of
+  case ACmd of
     TCP_REQUEST_FILE_LIST: HandleRequestFileList(AClient);
     TCP_REQUEST_FILE:      HandleRequestFile(AClient);
     TCP_NOTIFY_DELETE:     HandleNotifyDelete(AClient);
@@ -163,7 +187,6 @@ begin
           FOnChangesNotify(AClient.RemoteIP, 0);
       end;
     TCP_NOTIFY_CLIPBOARD: HandleNotifyClipboard(AClient);
-    TCP_SCREEN_FRAME:     HandleScreenFrame(AClient);
   end;
 end;
 
@@ -430,9 +453,10 @@ begin
     FOnClipboardNotify(RawUtf8(Data));
 end;
 
-procedure TTcpServerThread.HandleScreenFrame(AClient: TCrtSocket);
+procedure TTcpServerThread.HandleScreenFrame(AClient: TCrtSocket;
+  ACallback: TOnScreenFrameNotify);
 begin
-  if not Assigned(FOnScreenFrame) then
+  if not Assigned(ACallback) then
     Exit;
 
   // Read peer name
@@ -444,7 +468,7 @@ begin
 
   var NameBuf: RawByteString;
   SetLength(NameBuf, NameLen);
-  if not RecvExact(AClient, @NameBuf[1], NameLen) then
+  if (NameLen > 0) and not RecvExact(AClient, @NameBuf[1], NameLen) then
     Exit;
   var PeerName := RawUtf8(NameBuf);
 
@@ -462,28 +486,29 @@ begin
   if not RecvExact(AClient, @Data[0], DataLen) then
     Exit;
 
-  FOnScreenFrame(PeerName, Data);
+  ACallback(PeerName, Data);
 end;
 
-class procedure TTransferClient.SendScreenFrame(const AIP: RawUtf8; APort: Word;
-  const APeerName: RawUtf8; const AData: TBytes);
+class function TTransferClient.SendScreenFrame(const AIP: RawUtf8; APort: Word;
+  const APeerName: RawUtf8; const AData: TBytes): Boolean;
 begin
+  Result := False;
   var Sock := ConnectToPeer(AIP, APort);
   if Sock = nil then
     Exit;
   try
     var Cmd: Byte := TCP_SCREEN_FRAME;
-    SendRaw(Sock, @Cmd, 1);
+    if not SendRaw(Sock, @Cmd, 1) then Exit;
 
     var NameLen: Word := Length(APeerName);
-    SendRaw(Sock, @NameLen, SizeOf(NameLen));
-    if NameLen > 0 then
-      SendRaw(Sock, @APeerName[1], NameLen);
+    if not SendRaw(Sock, @NameLen, SizeOf(NameLen)) then Exit;
+    if (NameLen > 0) and not SendRaw(Sock, @APeerName[1], NameLen) then Exit;
 
     var DataLen: Cardinal := Length(AData);
-    SendRaw(Sock, @DataLen, SizeOf(DataLen));
-    if DataLen > 0 then
-      SendRaw(Sock, @AData[0], DataLen);
+    if not SendRaw(Sock, @DataLen, SizeOf(DataLen)) then Exit;
+    if (DataLen > 0) and not SendRaw(Sock, @AData[0], DataLen) then Exit;
+
+    Result := True;
   finally
     Sock.Free;
   end;

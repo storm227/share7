@@ -326,18 +326,20 @@ begin
   ConsoleWrite(FormatUtf8('[%] ' + SCaptionFoundFiles,
     [TimeStampStr, Length(FEntries)]), ccDarkGray);
 
-  // Start TCP server
+  // Create TCP server (suspended — assign callbacks before starting)
   FTcpServer := TTcpServerThread.Create(FConfig.TcpPort, FConfig.Folder,
     @FEntries, @FEntriesLock);
   FTcpServer.OnDeleteNotify := OnDeleteNotify;
   FTcpServer.OnChangesNotify := OnChangesNotify;
   if FConfig.Clipboard then
     FTcpServer.OnClipboardNotify := OnRemoteClipboardReceived;
+  FTcpServer.Start;
 
-  // Start UDP discovery
+  // Create UDP discovery (suspended — assign callbacks before starting)
   FDiscovery := TDiscoveryThread.Create(FConfig.Name, FConfig.UdpPort, FConfig.TcpPort);
   FDiscovery.OnPeerDiscovered := OnPeerDiscovered;
   FDiscovery.OnPeerLost := OnPeerLost;
+  FDiscovery.Start;
 
   // Start file watcher
   FWatcher := TFileWatcher.Create(FConfig.Folder);
